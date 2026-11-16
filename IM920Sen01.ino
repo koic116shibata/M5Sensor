@@ -7,7 +7,6 @@
 #define IM920_RESET 7
 #define DONE 8
 #define MAJOR 7615
-//#define DISP
 
 
 #include <Arduino.h>
@@ -30,6 +29,7 @@ static bool im920initialized = false;
 static bool mcp9808avail = false;
 static bool firstsend = true;
 static bool button = false;
+static bool displayAvailable = false;
 static uint8_t count = 0;
 static uint16_t major = MAJOR;
 
@@ -522,6 +522,7 @@ void setup() {
 
     auto cfg = M5.config();
     AtomS3.begin(cfg,true);
+    displayAvailable = AtomS3.Display.width() > 0 && AtomS3.Display.height() > 0;
     pinMode(IM920_RESET,OUTPUT);
     digitalWrite(IM920_RESET,LOW);
     digitalWrite(DONE,LOW);
@@ -531,6 +532,9 @@ void setup() {
     AtomS3.dis.setBrightness(100);
     AtomS3.dis.drawpix(0x000000);
     Serial.begin();
+    Serial.printf("Display: %s (%dx%d)\r\n",
+                  displayAvailable ? "available" : "not available",
+                  AtomS3.Display.width(), AtomS3.Display.height());
     cmdix = 0;
     rxix = 0;
     cmdready = false;
@@ -560,16 +564,16 @@ void setup() {
         Serial.printf("MCP9808 not found!\r\n");
     }
 
-#ifdef DISP
-    AtomS3.Display.clear();
-    AtomS3.Display.setTextSize(2);
-    AtomS3.Display.setCursor(0,0);
-    AtomS3.Display.setTextColor(WHITE);
-    AtomS3.Display.printf("Init IM920\r\n");
-    if (mcp9808avail) {
-        AtomS3.Display.printf("MCP9808 OK\r\n");
+    if (displayAvailable) {
+        AtomS3.Display.clear();
+        AtomS3.Display.setTextSize(2);
+        AtomS3.Display.setCursor(0,0);
+        AtomS3.Display.setTextColor(WHITE);
+        AtomS3.Display.printf("Init IM920\r\n");
+        if (mcp9808avail) {
+            AtomS3.Display.printf("MCP9808 OK\r\n");
+        }
     }
-#endif
 
     char resp[256];
 
@@ -591,9 +595,9 @@ void setup() {
     Serial.printf("Node Number:%04X\r\n",nodenum);
     Serial.printf("GroupID:%08X\r\n",groupid);
 
-#ifdef DISP
-    AtomS3.Display.clear();
-#endif
+    if (displayAvailable) {
+        AtomS3.Display.clear();
+    }
 
     delay(500);
 
@@ -653,35 +657,35 @@ void loop() {
             rt = im920_get_mode();
             Serial.printf("  Mode:%d\r\n",rt);
             Serial.printf("  NodeNumber:%04X\r\n\n",im920_get_nodeNumber());
-#ifdef DISP
-            AtomS3.Display.clear();
-            AtomS3.Display.setTextSize(2);
-            AtomS3.Display.setCursor(0,0);
-            AtomS3.Display.setTextColor(WHITE);
-            AtomS3.Display.printf("ID");
-            AtomS3.Display.setCursor(30,0);
-            AtomS3.Display.printf("%08X",nodeid);
-            AtomS3.Display.setCursor(0,18);
-            AtomS3.Display.printf("NN ");
-            AtomS3.Display.printf("%04X",nodenum);
-            AtomS3.Display.setCursor(0,36);
-            AtomS3.Display.printf("Gr");
-            AtomS3.Display.setCursor(30,36);
-            AtomS3.Display.printf("%08X",groupid);
-            AtomS3.Display.setCursor(0,54);
-            AtomS3.Display.printf("CH:%02X",ch);
-            AtomS3.Display.setCursor(0,72);
-            AtomS3.Display.printf("Mode:%d",rt);
-#endif
+            if (displayAvailable) {
+                AtomS3.Display.clear();
+                AtomS3.Display.setTextSize(2);
+                AtomS3.Display.setCursor(0,0);
+                AtomS3.Display.setTextColor(WHITE);
+                AtomS3.Display.printf("ID");
+                AtomS3.Display.setCursor(30,0);
+                AtomS3.Display.printf("%08X",nodeid);
+                AtomS3.Display.setCursor(0,18);
+                AtomS3.Display.printf("NN ");
+                AtomS3.Display.printf("%04X",nodenum);
+                AtomS3.Display.setCursor(0,36);
+                AtomS3.Display.printf("Gr");
+                AtomS3.Display.setCursor(30,36);
+                AtomS3.Display.printf("%08X",groupid);
+                AtomS3.Display.setCursor(0,54);
+                AtomS3.Display.printf("CH:%02X",ch);
+                AtomS3.Display.setCursor(0,72);
+                AtomS3.Display.printf("Mode:%d",rt);
+            }
             groupid = im920_get_group();
             if (groupid == 0xFFFFFFFF) {
-#ifdef DISP
-                AtomS3.Display.setTextSize(2);
-                AtomS3.Display.setTextColor(RED);
-                AtomS3.Display.fillRect(0,36,128,18,BLACK);
-                AtomS3.Display.setCursor(0,36);
-                AtomS3.Display.printf("Grp Seach");
-#endif
+                if (displayAvailable) {
+                    AtomS3.Display.setTextSize(2);
+                    AtomS3.Display.setTextColor(RED);
+                    AtomS3.Display.fillRect(0,36,128,18,BLACK);
+                    AtomS3.Display.setCursor(0,36);
+                    AtomS3.Display.printf("Grp Seach");
+                }
                 AtomS3.dis.drawpix(0xff0000);
                 AtomS3.update();
 
@@ -694,15 +698,15 @@ void loop() {
                 AtomS3.dis.drawpix(0x00ff00);
                 AtomS3.update();
 
-#ifdef DISP
-                AtomS3.Display.setTextSize(2);
-                AtomS3.Display.setTextColor(GREEN);
-                AtomS3.Display.fillRect(0,36,128,18,BLACK);
-                AtomS3.Display.setCursor(0,36);
-                AtomS3.Display.printf("Gr");
-                AtomS3.Display.setCursor(30,36);
-                AtomS3.Display.printf("%08X",groupid);
-#endif
+                if (displayAvailable) {
+                    AtomS3.Display.setTextSize(2);
+                    AtomS3.Display.setTextColor(GREEN);
+                    AtomS3.Display.fillRect(0,36,128,18,BLACK);
+                    AtomS3.Display.setCursor(0,36);
+                    AtomS3.Display.printf("Gr");
+                    AtomS3.Display.setCursor(30,36);
+                    AtomS3.Display.printf("%08X",groupid);
+                }
             } else {
                 im920initialized = true;
                 firstsend = true;
@@ -736,13 +740,13 @@ void loop() {
 
         int16_t it = (int16_t)(10 * tc);
     
-#ifdef DISP
-        AtomS3.Display.setTextColor(WHITE);
-        AtomS3.Display.setTextSize(3);
-        AtomS3.Display.fillRect(0,96,128,32,BLACK);
-        AtomS3.Display.setCursor(0,96);
-        AtomS3.Display.printf("%6.2fc",tc);
-#endif
+        if (displayAvailable) {
+            AtomS3.Display.setTextColor(WHITE);
+            AtomS3.Display.setTextSize(3);
+            AtomS3.Display.fillRect(0,96,128,32,BLACK);
+            AtomS3.Display.setCursor(0,96);
+            AtomS3.Display.printf("%6.2fc",tc);
+        }
 
         AtomS3.dis.drawpix(0x0000FF);
         AtomS3.update();
